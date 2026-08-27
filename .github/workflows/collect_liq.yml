@@ -1,7 +1,7 @@
 # collect_liq.yml — hourly Bybit liquidation listener (public repo: unlimited
 # Actions minutes; liquidation prints are public market data).
 # Lives at .github/workflows/collect_liq.yml
-# Coverage: two ~25 min windows per hour (:02 and :37); ~10 min/hour blind spot
+# Coverage: two ~25 min windows per hour (:02 and :32); ~10 min/hour blind spot
 # during commit+restart — recorded here as the dataset's known evidence-grade
 # limitation.
 
@@ -10,8 +10,11 @@ name: bybit-liq-collector
 on:
   schedule:
     - cron: "2 * * * *"
-    - cron: "37 * * * *"   # second chance — GitHub skips whole slots under load;
+    - cron: "32 * * * *"   # second chance — GitHub skips whole slots under load;
                            # two draws per hour cut the odds of losing an hour.
+                           # :32 (not :37) so this window ends ~:58, clear of the
+                           # next :02 trigger — cancel-in-progress would otherwise
+                           # kill it before its commit step.
   workflow_dispatch:
 
 permissions:
@@ -39,7 +42,7 @@ jobs:
 
       - name: Listen for liquidations (25 min window)
         env:
-          LIQ_RUN_SECONDS: "1500"   # 25 min, so the :02 and :37 windows both fit in the hour
+          LIQ_RUN_SECONDS: "1500"   # 25 min, so the :02 and :32 windows both fit in the hour
         run: python liq_collector.py
 
       - name: Commit and push
