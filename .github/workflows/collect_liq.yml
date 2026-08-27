@@ -1,0 +1,52 @@
+# collect_liq.yml — hourly Bybit liquidation listener (public repo: unlimited
+# Actions minutes; liquidation prints are public market data).
+# Lives at .github/workflows/collect_liq.yml
+# Coverage: ~55 min listening per hour; ~5 min/hour blind spot during commit+
+# restart — recorded here as the dataset's known evidence-grade limitation.
+
+name: bybit-liq-collector
+
+on:
+  schedule:
+    - cron: "2 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: liq-collector
+  cancel-in-progress: true      # a late-running previous window yields to the new hour
+
+jobs:
+  listen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 62
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install websocket-client requests
+
+      - name: Listen for liquidations (55 min window)
+        run: python liq_collector.py
+
+      - name: Commit and push
+        if: always()            # partial windows still get committed
+        run: |
+          git config user.name "liq-collector-bot"
+          git config user.email "liq-bot@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "No liquidations captured this window (calm tape or early cancel)"
+            exit 0
+          fi
+          git commit -m "liq window $(date -u +%FT%TZ)"
+          git pull --rebase origin main
+          git push origin main
