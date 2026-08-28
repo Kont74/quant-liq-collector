@@ -8,13 +8,6 @@
 name: bybit-liq-collector
 
 on:
-  schedule:
-    - cron: "2 * * * *"
-    - cron: "32 * * * *"   # second chance — GitHub skips whole slots under load;
-                           # two draws per hour cut the odds of losing an hour.
-                           # :32 (not :37) so this window ends ~:58, clear of the
-                           # next :02 trigger — cancel-in-progress would otherwise
-                           # kill it before its commit step.
   workflow_dispatch:
 
 permissions:
